@@ -1,3 +1,10 @@
+# Important functions:
+[low_level arm_APIs](https://github.com/bdaiinstitute/spot_wrapper/blob/800b1f787501c16ec14b586ba4c97f83bfa176ae/spot_wrapper/spot_arm.py)
+
+[low_level general_APIs]([https://github.com/bdaiinstitute/spot_wrapper/blob/800b1f787501c16ec14b586ba4c97f83bfa176ae/spot_wrapper/spot_arm.py](https://github.com/bdaiinstitute/spot_wrapper/blob/800b1f787501c16ec14b586ba4c97f83bfa176ae/spot_wrapper/wrapper.py))
+
+spot_ros2.py is an interface between ros and low-level API, for low-level API please check [here](https://github.com/boston-dynamics/spot-sdk/tree/master/python/examples)
+
 # spot_driver
 
 The Spot driver contains all of the necessary topics, services, and actions for controlling Spot over ROS 2.
