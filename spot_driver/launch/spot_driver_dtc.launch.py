@@ -50,7 +50,7 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
 
     spot_driver_node = Node(
         package="spot_driver",
-        executable="spot_ros2",
+        executable="spot_ros2_dtc",
         name="spot_ros2",
         output="screen",
         parameters=[config_file, spot_driver_params],

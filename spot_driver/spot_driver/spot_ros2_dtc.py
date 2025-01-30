@@ -227,9 +227,13 @@ class SpotROS_DTC(SpotROS):
         # self.armed_status_pub = self.create_publisher(Bool, "status/arm", 1)
         # self.spot_control_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.count = 30
+        self.get_logger().info(COLOR_GREEN + "arm_control()!!!!!!!!!." + COLOR_END)
+        time.sleep(2)
         self.arm_control()
-        self.timer = self.create_timer(0.1, self.status_timer_callback)
-
+        time.sleep(2)
+        # self.timer = self.create_timer(0.1, self.status_timer_callback)
+        self.look_at()
+        
         # self.timer2 = self.create_timer(1, self.arm_control)
         # self.spot_wrapper is robot in examples
     def echo(self, msg_str):
@@ -238,7 +242,7 @@ class SpotROS_DTC(SpotROS):
 
     def status_timer_callback(self):
 
-        
+        self.get_logger().info(COLOR_GREEN + "status_timer_callback()!!!!!!!!!." + COLOR_END)
         if( self.on_jetson ):
             value = GPIO.input(self.estop_input_pin)
             if value == GPIO.HIGH:
@@ -299,13 +303,29 @@ class SpotROS_DTC(SpotROS):
         trans = np.eye(4)
         trans[:3,:3] = R
         trans[0:3,3] = position
-        return trans
+        return trans, quat
     
-    def look_at(self, position):
+    def look_at(self):
 
-
-        target = np.array( [0.5, 0, 0.5] )
-        goal = self.get_lookat_position( position, target)
+        target = np.array( [1., -1., 0.] )
+        position = np.array( [0.5, 0, 0.5] )
+        goal, quat = self.get_lookat_position( position, target)
+        pose_msg = PoseStamped()
+        
+        pose_msg.pose.position.x = position[0]
+        pose_msg.pose.position.y = position[1]
+        pose_msg.pose.position.z = position[2]
+        pose_msg.pose.orientation.x = quat[0]
+        pose_msg.pose.orientation.y = quat[1]
+        pose_msg.pose.orientation.z = quat[2]
+        pose_msg.pose.orientation.w = quat[3]
+        
+        timestamp = self.get_clock().now().to_msg()
+        
+        pose_msg.header.stamp=timestamp
+        pose_msg.header.frame_id="body"
+        
+        self.arm_pose_cmd_callback(pose_msg)
         # move to goal 
 
 # need to use customized frame in the future
