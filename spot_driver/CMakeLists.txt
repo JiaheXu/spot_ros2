@@ -211,6 +211,16 @@ install(
   DESTINATION lib/${PROJECT_NAME}
   RENAME spot_ros2
   )
+
+#############################################################################################################################
+install(
+  PROGRAMS
+  spot_driver/spot_ros2_dtc.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME spot_ros2_dtc
+  )
+#############################################################################################################################
+
 install(
   PROGRAMS
   spot_driver/calibrated_reregistered_hand_camera_depth_publisher.py
