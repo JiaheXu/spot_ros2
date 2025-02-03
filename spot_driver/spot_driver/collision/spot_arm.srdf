@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+
+<robot name="spot_arm_test">
+    <group_state name="test" group="all">
+      <joint name="arm_sh0"  value="-1.1" />
+      <joint name="arm_sh1"  value="-1.2" />
+      <joint name="arm_el0"  value="-1.3" />
+      <joint name="arm_el1"  value="-1.4" />
+      <joint name="arm_wr0"  value="-1.5" />
+      <joint name="arm_wr1"  value="-1.6" />
+      <joint name="arm_f1x"  value="-1.7" />
+    </group_state>
+</robot>

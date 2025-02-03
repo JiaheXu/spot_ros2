@@ -172,9 +172,8 @@ from spot_driver.spot_ros2 import (
 )
 
 
-from geometry_msgs.msg import PointStamped, TwistStamped, Twist
+from geometry_msgs.msg import PointStamped, TwistStamped, Twist, Quaternion, Vector3, TransformStamped
 from std_msgs.msg import UInt8, Bool, String
-from sensor_msgs.msg import Joy
 # from airlab_msgs.msg import AIRLABModes
 from std_msgs.msg import String, Float32, Int8, UInt8, Bool, UInt32MultiArray, Int32
 from std_srvs.srv import SetBool
@@ -184,12 +183,26 @@ import rclpy
 import time
 
 
-
 from scipy.spatial.transform import Rotation
 import numpy as np
 import open3d as o3d
 import transforms3d as t3d
 import math
+
+##########################################################################
+# tf2
+##########################################################################
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
+
+##########################################################################
+# collision stuff
+##########################################################################
+import pinocchio as pin
+import hppfcl as fcl
+import os
+from os.path import dirname, join, abspath
 
 # for GPIO
 #import RPi.GPIO as GPIO
@@ -209,12 +222,19 @@ class SpotROS_DTC(SpotROS):
         self.power_on_status = False
         self.stand_status = False
 
-        
+        self.hand_frame = "arm_link_wr1"
+        self.base_frame = "base_link"
+
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.hand_transform = TransformStamped()
+
         # Pin Definitions
         self.estop_on = False
         self.estop_prev_value = False
         self.estop_input_pin = 22  # BOARD pin 22
-        
+
+
         self.on_jetson = False
         if( self.on_jetson ):
 
@@ -222,17 +242,42 @@ class SpotROS_DTC(SpotROS):
             GPIO.setup(self.estop_input_pin, GPIO.IN)  # set pin as an input pin
 
         # output
-        self.tier2_estop_pub = self.create_publisher(Bool, "/tier2_estop", 1)
+        self.tier2_estop_pub = self.create_publisher(Bool, "tier2_estop", 1)
 
         # self.armed_status_pub = self.create_publisher(Bool, "status/arm", 1)
         # self.spot_control_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.count = 30
         self.get_logger().info(COLOR_GREEN + "arm_control()!!!!!!!!!." + COLOR_END)
-        time.sleep(2)
-        self.arm_control()
-        time.sleep(2)
-        # self.timer = self.create_timer(0.1, self.status_timer_callback)
-        self.look_at()
+        
+        
+        ##########################################################################
+        # collision check
+        ##########################################################################
+        self.urdf_model_path =  "./collision/spot_arm.urdf"
+        self.srdf_model_path = "./collision/spot_arm.srdf"
+        self.model = pin.buildModelFromUrdf(self.urdf_model_path, pin.JointModelFreeFlyer())
+        self.geom_model = pin.buildGeomFromUrdf(
+            self.model, self.urdf_model_path, pin.GeometryType.COLLISION
+        )
+        self.geom_model.addAllCollisionPairs()
+        pin.loadReferenceConfigurations(self.model, self.srdf_model_path)
+        self.joints = model.referenceConfigurations["test"]
+        self.data = model.createData()
+        self.geom_data = pin.GeometryData(self.geom_model)
+
+        ##########################################################################
+        # input
+        ##########################################################################
+        self.joint_sub = self.create_subscription(
+                    JointState,
+                    'joint_states',
+                    self.joint_states_callback,
+                    1)
+
+        # time.sleep(2)
+        # self.arm_control()
+        # time.sleep(2)
+        # self.look_at()
         
         # self.timer2 = self.create_timer(1, self.arm_control)
         # self.spot_wrapper is robot in examples
@@ -307,7 +352,7 @@ class SpotROS_DTC(SpotROS):
     
     def look_at(self):
 
-        target = np.array( [1., -1., 0.] )
+        target = np.array( [1., 0., 0.] )
         position = np.array( [0.5, 0, 0.5] )
         goal, quat = self.get_lookat_position( position, target)
         pose_msg = PoseStamped()
@@ -327,6 +372,47 @@ class SpotROS_DTC(SpotROS):
         
         self.arm_pose_cmd_callback(pose_msg)
         # move to goal 
+    def joint_states_callback(self, joints_msg):
+        
+        joints_np = np.array(joints_msg.position)
+        arm_joints = joints_np[12:18]
+        result = self.check_self_collision(arm_joints)
+        self.echo( str(result) )
+
+    def check_self_collision(self, joints_array):
+
+        # q = [-1, 1, 0, -1, 1]
+        # Create data structures
+        data = model.createData()
+        geom_data = pin.GeometryData(geom_model)
+
+        self.joints[-7:-1] = joints_array
+        # Compute all the collisions
+        pin.computeCollisions(model, data, geom_model, geom_data, self.joints, False)
+
+        collision_free = True
+        for k in range(len(self.geom_model.collisionPairs)):
+            cr = self.geom_data.collisionResults[k]
+            cp = self.geom_model.collisionPairs[k]
+            if cr.isCollision():
+                collision_free = False
+        return collision_free
+
+        # end = time.time()
+    def get_EE_pose(self):
+        return
+        #         try:
+        #     self.left_hand_transform = self.tf_buffer.lookup_transform(
+        #             self.left_base_frame,
+        #             self.left_hand_frame,
+        #             bgr.header.stamp,
+        #             timeout=rclpy.duration.Duration(seconds=0.01)
+        #         )
+        # except TransformException as ex:
+        #     self.get_logger().info(
+        #         f'Could not transform {self.left_base_frame} to {self.left_hand_frame}: {ex}'
+        #     )
+        #     return
 
 # need to use customized frame in the future
 # https://github.com/bdaiinstitute/spot_ros2/commit/6410c75e43a439cd22e3f51b60f7710c8338dfc2
@@ -339,3 +425,48 @@ def main(args: Optional[List[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+# name:
+# - spot2/front_left_hip_x
+# - spot2/front_left_hip_y
+# - spot2/front_left_knee
+# - spot2/front_right_hip_x
+# - spot2/front_right_hip_y
+# - spot2/front_right_knee
+# - spot2/rear_left_hip_x
+# - spot2/rear_left_hip_y
+# - spot2/rear_left_knee
+# - spot2/rear_right_hip_x
+# - spot2/rear_right_hip_y
+# - spot2/rear_right_knee
+# - spot2/arm_sh0
+# - spot2/arm_sh1
+# - spot2/arm_el0
+# - spot2/arm_el1
+# - spot2/arm_wr0
+# - spot2/arm_wr1
+# - spot2/arm_f1x
+# position:
+# - 0.11886239051818848
+# - 0.7051665186882019
+# - -1.4600502252578735
+# - -0.1296297311782837
+# - 0.7174636125564575
+# - -1.4796850681304932
+# - 0.13251681625843048
+# - 0.7023323178291321
+# - -1.4635064601898193
+# - -0.1394481062889099
+# - 0.6957418322563171
+# - -1.4375007152557373
+# - 0.00022673606872558594
+# - -3.118230104446411
+# - 3.1375534534454346
+# - 1.5675904750823975
+# - 0.0020568370819091797
+# - -1.567260503768921
+# - -0.0219346284866333
+# /spot2/status/power_states for battery , spot_msgs/msg/PowerState
+# /spot2/joint_states for joints, sensor_msgs/msg/JointState
