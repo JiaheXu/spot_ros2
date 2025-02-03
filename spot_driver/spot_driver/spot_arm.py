@@ -6,9 +6,6 @@ import time
 import os
 from os.path import dirname, join, abspath
 
-pinocchio_model_dir = join(dirname(dirname(str(abspath(__file__)))), "models")
-print("pinocchio_model_dir: ", pinocchio_model_dir)
-# model_path = join(pinocchio_model_dir, "example-robot-data/robots")
 # model_path = "./spot_description/"
 # mesh_dir = "./spot_description/"
 # urdf_filename = "./spot_description/spot_arm.urdf"

@@ -253,18 +253,21 @@ class SpotROS_DTC(SpotROS):
         ##########################################################################
         # collision check
         ##########################################################################
-        self.urdf_model_path =  "./collision/spot_arm.urdf"
-        self.srdf_model_path = "./collision/spot_arm.srdf"
+        pinocchio_model_dir = dirname(dirname(str(abspath(__file__))))
+        self.urdf_model_path =  pinocchio_model_dir + "/spot_driver/collision/spot_arm.urdf"
+        self.srdf_model_path = pinocchio_model_dir + "/spot_driver/collision/spot_arm.srdf"
+
+        print("urdf_model_path: ", self.urdf_model_path)
         self.model = pin.buildModelFromUrdf(self.urdf_model_path, pin.JointModelFreeFlyer())
         self.geom_model = pin.buildGeomFromUrdf(
             self.model, self.urdf_model_path, pin.GeometryType.COLLISION
         )
         self.geom_model.addAllCollisionPairs()
         pin.loadReferenceConfigurations(self.model, self.srdf_model_path)
-        self.joints = model.referenceConfigurations["test"]
-        self.data = model.createData()
+        self.joints = self.model.referenceConfigurations["test"]
+        self.data = self.model.createData()
         self.geom_data = pin.GeometryData(self.geom_model)
-
+        
         ##########################################################################
         # input
         ##########################################################################
@@ -383,12 +386,11 @@ class SpotROS_DTC(SpotROS):
 
         # q = [-1, 1, 0, -1, 1]
         # Create data structures
-        data = model.createData()
-        geom_data = pin.GeometryData(geom_model)
+
 
         self.joints[-7:-1] = joints_array
         # Compute all the collisions
-        pin.computeCollisions(model, data, geom_model, geom_data, self.joints, False)
+        pin.computeCollisions(self.model, self.data, self.geom_model,self.geom_data, self.joints, False)
 
         collision_free = True
         for k in range(len(self.geom_model.collisionPairs)):
