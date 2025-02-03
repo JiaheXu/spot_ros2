@@ -276,6 +276,8 @@ class SpotROS_DTC(SpotROS):
                     'joint_states',
                     self.joint_states_callback,
                     1)
+        
+        self.human_anchor = None
 
         # time.sleep(2)
         # self.arm_control()
