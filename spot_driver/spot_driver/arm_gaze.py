@@ -71,6 +71,8 @@ def gaze_control(config):
 
         block_until_arm_arrives(command_client, unstow_command_id, 3.0)
 
+
+        #####################################################################################################################
         # Convert the location from the moving base frame to the world frame.
         robot_state = robot_state_client.get_robot_state()
         odom_T_flat_body = get_a_tform_b(robot_state.kinematic_state.transforms_snapshot,
@@ -94,7 +96,10 @@ def gaze_control(config):
         gaze_command_id = command_client.robot_command(synchro_command)
 
         block_until_arm_arrives(command_client, gaze_command_id, 4.0)
-
+        #####################################################################################################################
+        
+        
+        
         # Look to the left and the right with the hand.
         # Robot's frame is X+ forward, Z+ up, so left and right is +/- in Y.
         x = 4.0  # look 4 meters ahead
