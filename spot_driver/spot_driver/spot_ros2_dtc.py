@@ -76,6 +76,7 @@ from geometry_msgs.msg import (
     Pose,
     PoseStamped,
     Twist,
+    TransformStamped,
 )
 from rclpy import Parameter
 from rclpy.action import ActionServer
@@ -89,6 +90,9 @@ from sensor_msgs.msg import JointState
 from std_srvs.srv import SetBool, Trigger
 
 import spot_driver.robot_command_util as robot_command_util
+
+from synchros2.tf_listener_wrapper import TFListenerWrapper
+from synchros2.utilities import fqn, namespace_with
 
 # DEBUG/RELEASE: RELATIVE PATH NOT WORKING IN DEBUG
 # Release
@@ -174,7 +178,7 @@ from spot_driver.spot_ros2 import (
     SpotROS
 )
 
-from dtc_spot_msgs.srv import Anchor_3D
+# from dtc_spot_msgs.srv import Anchor_3D
 
 from geometry_msgs.msg import PointStamped, TwistStamped, Twist
 from nav_msgs.msg import Path
@@ -195,13 +199,14 @@ import numpy as np
 import open3d as o3d
 import transforms3d as t3d
 import math
+from tf2_ros import TransformException
 
 class SpotROS_DTC(SpotROS):
 
     def __init__(self, **kwargs):
         super().__init__( **kwargs )
         self.get_logger().info(COLOR_GREEN + "Hi from spot_driver_dtc." + COLOR_END)
-        _, __ = self.spot_wrapper.spot_arm.gripper_open()
+        # _, __ = self.spot_wrapper.spot_arm.gripper_open()
         # self.command_client = self.spot_wrapper.ensure_client(RobotCommandClient.default_service_name)
 
 
@@ -216,19 +221,23 @@ class SpotROS_DTC(SpotROS):
         self._robot_name = self.name
         self._body_frame_name = namespace_with(self._robot_name, BODY_FRAME_NAME)
         self._vision_frame_name = namespace_with(self._robot_name, VISION_FRAME_NAME)
-        self._tf_listener = TFListenerWrapper(node)
-        self._tf_listener.wait_for_a_tform_b(self._body_frame_name, self._vision_frame_name)
+        self._ee_frame_name = namespace_with(self._robot_name, "arm_link_wr1")
 
+        self._tf_listener = TFListenerWrapper(self)
+        # self._tf_listener.wait_for_a_tform_b(self._body_frame_name, self._vision_frame_name)
+        # self._tf_listener.wait_for_a_tform_b( self._ee_frame_name, self._body_frame_name)
+
+        
         # Pin Definitions
         self.estop_on = False
         self.estop_prev_value = False
-        self.estop_input_pin = 22  # BOARD pin 22
+        # self.estop_input_pin = 22  # BOARD pin 22
 
         self.has_anchor = False
         self.anchor = PointStamped()
 
         # topic
-        self.tier2_estop_pub = self.create_subscriber(Bool, "/tier2_estop", self.estop_callback, 1)
+        # self.tier2_estop_pub = self.create_subscriber(Bool, "/tier2_estop", self.estop_callback, 1)
         
         # service
         # self.set_anchor_srv = self.create_service(Anchor_3D, 'set_anchor', self.set_anchor_callback)
@@ -241,6 +250,9 @@ class SpotROS_DTC(SpotROS):
 
         # output
         # self.armed_status_pub = self.create_publisher(Bool, "status/arm", 1)
+        self.ee_transform_pub = self.create_publisher(TransformStamped, "body_2_ee_transform", 1)
+        self.body_transform_pub = self.create_publisher(TransformStamped, "world_2_body_transform", 1)
+
         self.timer = self.create_timer(0.1, self.status_timer_callback)
 
 
@@ -268,6 +280,27 @@ class SpotROS_DTC(SpotROS):
 
     def status_timer_callback(self):
 
+        # self.get_logger().info(COLOR_GREEN + "status_timer_callback()!!!!!!!!!." + COLOR_END)
+        world_t_robot = None
+        try:
+            world_t_robot = self._tf_listener.lookup_a_tform_b(self._vision_frame_name, self._body_frame_name)
+        except TransformException as ex:
+            self.get_logger().info("Could not get transform from world(vision) to body")
+
+        if(world_t_robot is not None):
+            self.body_transform_pub.publish(world_t_robot)
+
+        robot_t_ee = None
+        try:
+            robot_t_ee = self._tf_listener.lookup_a_tform_b(self._body_frame_name, self._ee_frame_name)
+        except TransformException as ex:
+            self.get_logger().info("Could not get transform from body to ee")
+
+        if(robot_t_ee is not None):
+            self.ee_transform_pub.publish(robot_t_ee)
+
+        # robot_t_ee = self._tf_listener.lookup_a_tform_b(self._body_frame_name, self._ee_frame_name)
+        # print("world_t_robot: ",world_t_robot)
         # self.get_logger().info(COLOR_GREEN + "status_timer_callback()!!!!!!!!!." + COLOR_END)
 
 
