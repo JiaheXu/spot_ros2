@@ -238,7 +238,7 @@ class SpotROS_DTC(SpotROS):
 
         # topic
         # self.tier2_estop_pub = self.create_subscriber(Bool, "/tier2_estop", self.estop_callback, 1)
-        
+        self.look_at_sub = self.create_subscriber(PointStamped, "/look_at_goal", self.look_at_callback, 1)        
         # service
         # self.set_anchor_srv = self.create_service(Anchor_3D, 'set_anchor', self.set_anchor_callback)
         # self.clear_anchor_srv = self.create_service(Trigger, 'clear_anchor', self.clear_anchor_callback)
@@ -411,9 +411,9 @@ class SpotROS_DTC(SpotROS):
         trans[0:3,3] = position
         return trans, quat
     
-    def look_at(self):
+    def look_at_callback(self, ps_msg):
 
-        target = np.array( [1., 0., 0.] ) # in bo
+        target = np.array( [ps_msg.point.x, ps_msg.point.y, ps_msg.point.z] ) # in body frame
         position = np.array( [0.5, 0, 0.5] ) # in body frame
         goal, quat = self.get_lookat_position( position, target)
         pose_msg = PoseStamped()
