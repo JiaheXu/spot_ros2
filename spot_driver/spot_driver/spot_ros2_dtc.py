@@ -238,7 +238,7 @@ class SpotROS_DTC(SpotROS):
 
         # topic
         # self.tier2_estop_pub = self.create_subscriber(Bool, "/tier2_estop", self.estop_callback, 1)
-        self.look_at_sub = self.create_subscriber(PointStamped, "/look_at_goal", self.look_at_callback, 1)        
+        # self.look_at_sub = self.create_subscriber(PointStamped, "/look_at_goal", self.look_at_callback, 1)        
         # service
         # self.set_anchor_srv = self.create_service(Anchor_3D, 'set_anchor', self.set_anchor_callback)
         # self.clear_anchor_srv = self.create_service(Trigger, 'clear_anchor', self.clear_anchor_callback)
