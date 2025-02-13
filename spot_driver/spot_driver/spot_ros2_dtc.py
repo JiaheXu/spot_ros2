@@ -262,11 +262,11 @@ class SpotROS_DTC(SpotROS):
     def transformstamped_2_posestamped(self, transformstamped):
         
         posestamped = PoseStamped()
-        posestamped.position.x = transformstamped.translation.x
-        posestamped.position.y = transformstamped.translation.y
-        posestamped.position.z = transformstamped.translation.z
-        posestamped.orientation = transformstamped.rotation
-
+        posestamped.pose.position.x = transformstamped.transform.translation.x
+        posestamped.pose.position.y = transformstamped.transform.translation.y
+        posestamped.pose.position.z = transformstamped.transform.translation.z
+        posestamped.pose.orientation = transformstamped.transform.rotation
+        posestamped.header = transformstamped.header
         return posestamped
 
     def status_timer_callback(self):
