@@ -279,7 +279,7 @@ class SpotROS_DTC(SpotROS):
             self.get_logger().info("Could not get transform from world(vision) to body")
 
         if(world_t_robot is not None):
-            self.last_body_pose = transformstamped_2_posestamped(world_t_robot)
+            self.last_body_pose = self.transformstamped_2_posestamped(world_t_robot)
             self.body_pose_pub.publish(self.last_body_pose)
 
         robot_t_ee = None
@@ -289,7 +289,7 @@ class SpotROS_DTC(SpotROS):
             self.get_logger().info("Could not get transform from body to ee")
 
         if(robot_t_ee is not None):
-            self.last_ee_pose = transformstamped_2_posestamped(robot_t_ee)
+            self.last_ee_pose = self.transformstamped_2_posestamped(robot_t_ee)
             self.ee_pose_pub.publish(self.last_ee_pose)
 
 
