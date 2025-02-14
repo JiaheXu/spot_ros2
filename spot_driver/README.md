@@ -3,6 +3,13 @@
 
 [low_level general_APIs](https://github.com/bdaiinstitute/spot_wrapper/blob/800b1f787501c16ec14b586ba4c97f83bfa176ae/spot_wrapper/wrapper.py)
 
+battery status topic: [Detail](https://github.com/JiaheXu/spot_ros2/blob/206536d8af18f4841efaf226217b367811ef693a/spot_examples/spot_examples/wasd.py#L323)
+```
+self.sub_battery_state = self.node.create_subscription(
+            BatteryStateArray, namespace_with(robot_name, "status/battery_states"), self._status_battery_callback, 1
+        )
+```
+
 spot_ros2.py is an interface between ros and low-level API, for low-level API please check [here](https://github.com/boston-dynamics/spot-sdk/tree/master/python/examples)
 
 # spot_driver

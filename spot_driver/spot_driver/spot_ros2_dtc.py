@@ -235,7 +235,7 @@ class SpotROS_DTC(SpotROS):
         self.last_ee_pose = PoseStamped()
 
         # topic
-        self.tier2_estop_sub = self.create_subscriber(Header, "estop", self.estop_callback, 1)
+        self.estop_sub = self.create_subscriber(Header, "estop", self.estop_callback, 1)
         self.look_at_sub = self.create_subscriber(PointStamped, "look_at_goal", self.look_at_callback, 1)
 
         self.startup()
