@@ -185,7 +185,7 @@ from nav_msgs.msg import Path
 from std_msgs.msg import UInt8, Bool, String
 from sensor_msgs.msg import Joy
 # from airlab_msgs.msg import AIRLABModes
-from std_msgs.msg import String, Float32, Int8, UInt8, Bool, UInt32MultiArray, Int32
+from std_msgs.msg import String, Float32, Int8, UInt8, Bool, UInt32MultiArray, Int32, Header
 from std_srvs.srv import SetBool
 from rclpy.client import Client
 from std_srvs.srv import Trigger
@@ -200,7 +200,8 @@ import open3d as o3d
 import transforms3d as t3d
 import math
 from tf2_ros import TransformException
-
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
 class SpotROS_DTC(SpotROS):
 
     def __init__(self, **kwargs):
@@ -234,10 +235,6 @@ class SpotROS_DTC(SpotROS):
         self.anchor = PointStamped()
         self.last_ee_pose = PoseStamped()
 
-        # topic
-        self.estop_sub = self.create_subscriber(Header, "estop", self.estop_callback, 1)
-        self.look_at_sub = self.create_subscriber(PointStamped, "look_at_goal", self.look_at_callback, 1)
-
         self.startup()
 
         # output
@@ -247,6 +244,9 @@ class SpotROS_DTC(SpotROS):
 
         self.timer = self.create_timer(0.1, self.status_timer_callback)
 
+        # topic
+        self.tier2_estop_sub = self.create_subscription(Header, "estop", self.estop_callback, 1)
+        self.look_at_sub = self.create_subscription(PointStamped, "look_at_goal", self.look_at_callback, 1)
 
     def echo(self, msg_str):
         self.get_logger().info(msg_str)
@@ -271,7 +271,7 @@ class SpotROS_DTC(SpotROS):
 
     def status_timer_callback(self):
 
-        # self.get_logger().info(COLOR_GREEN + "status_timer_callback()!!!!!!!!!." + COLOR_END)
+        # self.get_logger().info(COLOR_GREEN + "status_timer_callback()" + COLOR_END)
         world_t_robot = None
         try:
             world_t_robot = self._tf_listener.lookup_a_tform_b(self._vision_frame_name, self._body_frame_name)
@@ -294,55 +294,6 @@ class SpotROS_DTC(SpotROS):
 
 
         return
-
-
-    def estop_callback(self, msg):
-        
-        if(msg.frame_id == "True"):
-            self.estop_active = True
-        else:
-            self.estop_active = False
-        
-        if(self.estop_active != self.last_estop_value):
-            if(self.estop_active): # estop triggered
-                self.trigger_estop()
-            else:
-                self.disengage_estop()
-
-        self.last_estop_value = self.estop_active
-
-    self trigger_estop(self):
-        # save arm_pose
-        # stow arm
-        # trigger gentle steop
-
-        self.saved_arm_pose = self.last_ee_pose
-
-        stow_success, stow_message = self.spot_wrapper.spot_arm.arm_stow()
-        estop_success, estop_message = self.spot_wrapper.assertEStop(False)
-
-        return (stow_success and estop_success)
-
-    self disengage_estop(self):
-        # disentangle estop
-        # stand
-        # unstow arm
-        # return to saved arm pose
-
-        disengage_success, disengage_message = self.spot_wrapper.disengageEStop()
-        stand_success, stand_message = self.spot_wrapper.stand()
-        unstow_success, unstow_message = self.spot_wrapper.spot_arm.arm_unstow()
-
-        pose_msg = PoseStamped()
-        # timestamp = self.get_clock().now().to_msg()
-        # self.saved_arm_pose
-        pose_msg = self.saved_arm_pose.pose
-        pose_msg.header.stamp = self.get_clock().now().to_msg()
-        pose_msg.header.frame_id="body"
-        
-        self.arm_pose_cmd_callback(self.saved_arm_pose)
-
-        return (disengage_success and stand_success and unstow_success)
 
     def get_lookat_position(self, position, target):
         # we only rotate z and y axis
@@ -389,70 +340,6 @@ class SpotROS_DTC(SpotROS):
         pose_msg.header.frame_id="body"
         
         self.arm_pose_cmd_callback(pose_msg)
-
-        # move to goal 
-    def gaze(self):
-        
-
-        # self.spot_wrapper is robot in examples
-        # self._robot_command_client
-
-        robot_state = self.spot_wrapper._robot_state_client.get_robot_state()
-        # print("robot_state: ", robot_state)
-        odom_T_flat_body = get_a_tform_b(robot_state.kinematic_state.transforms_snapshot,
-                                         ODOM_FRAME_NAME, GRAV_ALIGNED_BODY_FRAME_NAME)
-
-        # Look at a point 3 meters in front and 4 meters to the left.
-        # We are not specifying a hand location, the robot will pick one.
-        gaze_target_in_odom = odom_T_flat_body.transform_point(x=3.0, y=4.0, z=0)
-
-        gaze_command = RobotCommandBuilder.arm_gaze_command(gaze_target_in_odom[0],
-                                                            gaze_target_in_odom[1],
-                                                            gaze_target_in_odom[2], ODOM_FRAME_NAME)
-        # Make the open gripper RobotCommand
-        gripper_command = RobotCommandBuilder.claw_gripper_open_command()
-
-        gcode_origin_T_walk = SE3Pose(0.5, 0., 0., Quat(1, 0, 0, 0))
-
-        odom_T_walk = gcode_origin_T_walk
-
-        odom_T_walk_se2 = SE2Pose.flatten(odom_T_walk)
-        # mobility_command = RobotCommandBuilder.synchro_se2_trajectory_command(odom_T_walk_se2.to_proto(), frame_name='odom')
-
-        # Combine the arm and gripper commands into one RobotCommand
-        # synchro_command = RobotCommandBuilder.build_synchro_command(mobility_command, gripper_command, gaze_command)
-        synchro_command = RobotCommandBuilder.build_synchro_command(gripper_command, gaze_command)
-        # Send the request
-        # robot.logger.info('Requesting gaze.')
-        gaze_command_id = self.spot_wrapper._robot_command_client.robot_command(synchro_command)
-
-        block_until_arm_arrives(self.spot_wrapper._robot_command_client, gaze_command_id, 4.0)
-    
-    def walk(self) -> None:
-        # self._logger.info("Walking forward")
-        world_t_robot = self._tf_listener.lookup_a_tform_b(self._vision_frame_name, self._body_frame_name)
-        world_t_robot_se2 = SE3Pose(
-            world_t_robot.transform.translation.x,
-            world_t_robot.transform.translation.y,
-            world_t_robot.transform.translation.z,
-            Quat(
-                world_t_robot.transform.rotation.w,
-                world_t_robot.transform.rotation.x,
-                world_t_robot.transform.rotation.y,
-                world_t_robot.transform.rotation.z,
-            ),
-        ).get_closest_se2_transform()
-
-        ROBOT_T_GOAL = SE2Pose(0.5, 0.0, 0.0)
-        world_t_goal = world_t_robot_se2 * ROBOT_T_GOAL
-        proto_goal = RobotCommandBuilder.synchro_se2_trajectory_point_command(
-            goal_x=world_t_goal.x,
-            goal_y=world_t_goal.y,
-            goal_heading=world_t_goal.angle,
-            frame_name=VISION_FRAME_NAME,  # use Boston Dynamics' frame conventions
-        )
-
-
 
 # need to use customized frame in the future
 # https://github.com/bdaiinstitute/spot_ros2/commit/6410c75e43a439cd22e3f51b60f7710c8338dfc2
