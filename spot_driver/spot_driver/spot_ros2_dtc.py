@@ -245,7 +245,7 @@ class SpotROS_DTC(SpotROS):
         self.timer = self.create_timer(0.1, self.status_timer_callback)
 
         # topic
-        self.tier2_estop_sub = self.create_subscription(Header, "estop", self.estop_callback, 1)
+        # self.tier2_estop_sub = self.create_subscription(Header, "estop", self.estop_callback, 1)
         self.look_at_sub = self.create_subscription(PointStamped, "look_at_goal", self.look_at_callback, 1)
 
     def echo(self, msg_str):
