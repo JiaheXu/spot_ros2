@@ -5,8 +5,8 @@
     # Spot Login Information
     username: "airlab"
     password: "passme243546"
-    #hostname: "192.168.50.29"
-    hostname: "10.3.1.29" # use this for now, need to port from BD
+    hostname: "192.168.50.29"
+    #hostname: "10.3.1.29" # use this for now, need to port from BD
 
     # Status Updates from Spot
     metrics_rate: 0.04
