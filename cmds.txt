@@ -1,0 +1,1 @@
+ros2 launch spot_driver spot_driver_dtc.launch.py config_file:=/home/dtc/airlab_ws/drivers_ws/src/spot_ros2/spot_driver/config/spot2.yaml spot_name:=spot2
