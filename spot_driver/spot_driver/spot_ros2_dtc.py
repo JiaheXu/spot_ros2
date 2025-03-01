@@ -305,20 +305,17 @@ class SpotROS_DTC(SpotROS):
         yaw = math.atan2(y, x)
         
         pitch = -math.atan2(z, math.sqrt(x*x + y*y) )
-        # numpy needs 1.24.0, need to intgrate later
-        return None, None
+  
         # print("pitch: ", pitch)
-        # Rx = t3d.euler.euler2mat(0, 0, 0)
-        # Ry = t3d.euler.euler2mat(0, pitch, 0)
-        # Rz = t3d.euler.euler2mat(0, 0, yaw)
-        # R = Rz @ Ry
-        # R = Ry 
-        # rot = Rotation.from_matrix(R)
-        # quat = rot.as_quat()
-        # trans = np.eye(4)
-        # trans[:3,:3] = R
-        # trans[0:3,3] = position
-        # return trans, quat
+        Ry = Rotation.from_eular( "y", pitch, degrees=False)
+        Rz = Rotation.from_eular( "z", yaw, degrees=False)
+        R = Rz @ Ry
+        rot = Rotation.from_matrix(R)
+        quat = rot.as_quat()
+        trans = np.eye(4)
+        trans[:3,:3] = R
+        trans[0:3,3] = position
+        return trans, quat
     
     def look_at_callback(self, ps_msg):
 
